@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Gamepad2, Sparkles } from "lucide-react";
 import heroBanner from "@/assets/hero-banner.jpg";
+import { useNavigate } from "react-router-dom";
 
 export const Hero = () => {
+  const navigate = useNavigate();
+  
   return (
     <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
       {/* Background Image with Overlay */}
@@ -34,11 +37,11 @@ export const Hero = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Button variant="hero" size="lg">
+          <Button variant="hero" size="lg" onClick={() => navigate('/catalogo')}>
             <Sparkles className="w-5 h-5" />
             Explorar Catálogo
           </Button>
-          <Button variant="outline" size="lg">
+          <Button variant="outline" size="lg" onClick={() => navigate('/catalogo')}>
             Sou Desenvolvedor
           </Button>
         </div>

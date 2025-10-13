@@ -1,15 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Gamepad2, Menu, X } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { label: "Catálogo", href: "#" },
-    { label: "Crowdfunding", href: "#" },
-    { label: "Mods", href: "#" },
-    { label: "Comunidade", href: "#" },
+    { label: "Catálogo", href: "/catalogo" },
+    { label: "Biblioteca", href: "/biblioteca" },
+    { label: "Crowdfunding", href: "/crowdfunding" },
+    { label: "Mods", href: "/mods" },
+    { label: "Comunidade", href: "/comunidade" },
+    { label: "Carteira", href: "/carteira" },
   ];
 
   return (
@@ -17,23 +20,23 @@ export const Navigation = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <Gamepad2 className="w-8 h-8 text-primary-glow" />
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               Ludum
             </span>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
             {navLinks.map((link, index) => (
-              <a
+              <Link
                 key={index}
-                href={link.href}
+                to={link.href}
                 className="text-muted-foreground hover:text-foreground transition-smooth"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -61,14 +64,14 @@ export const Navigation = () => {
         {isOpen && (
           <div className="md:hidden py-4 space-y-4 border-t border-border/50">
             {navLinks.map((link, index) => (
-              <a
+              <Link
                 key={index}
-                href={link.href}
+                to={link.href}
                 className="block text-muted-foreground hover:text-foreground transition-smooth py-2"
                 onClick={() => setIsOpen(false)}
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
             <div className="flex flex-col gap-2 pt-4">
               <Button variant="ghost" className="w-full">Entrar</Button>
