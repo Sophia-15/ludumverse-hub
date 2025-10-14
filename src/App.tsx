@@ -8,6 +8,7 @@ import Catalog from "./pages/Catalog";
 import GameDetail from "./pages/GameDetail";
 import Library from "./pages/Library";
 import Crowdfunding from "./pages/Crowdfunding";
+import CampaignDetail from "./pages/CampaignDetail";
 import Mods from "./pages/Mods";
 import Community from "./pages/Community";
 import Wallet from "./pages/Wallet";
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/jogo/:slug" element={<GameDetail />} />
           <Route path="/biblioteca" element={<Library />} />
           <Route path="/crowdfunding" element={<Crowdfunding />} />
+          <Route path="/campanha/:id" element={<CampaignDetail />} />
           <Route path="/mods" element={<Mods />} />
           <Route path="/comunidade" element={<Community />} />
           <Route path="/carteira" element={<Wallet />} />
