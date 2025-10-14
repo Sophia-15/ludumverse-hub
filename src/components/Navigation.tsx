@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Gamepad2, Menu, X } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   const navLinks = [
     { label: "Catálogo", href: "/catalogo" },
@@ -42,6 +43,9 @@ export const Navigation = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-3">
+            <Button variant="secondary" onClick={() => navigate("/desenvolvedor")}>
+              Área Dev
+            </Button>
             <Button variant="ghost">Entrar</Button>
             <Button variant="hero">Cadastrar</Button>
           </div>
@@ -74,6 +78,9 @@ export const Navigation = () => {
               </Link>
             ))}
             <div className="flex flex-col gap-2 pt-4">
+              <Button variant="secondary" onClick={() => navigate("/desenvolvedor")} className="w-full">
+                Área Dev
+              </Button>
               <Button variant="ghost" className="w-full">Entrar</Button>
               <Button variant="hero" className="w-full">Cadastrar</Button>
             </div>
