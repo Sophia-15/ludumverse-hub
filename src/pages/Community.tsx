@@ -3,13 +3,17 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Heart, MessageSquare, Share2, Image as ImageIcon } from "lucide-react";
-import { mockPosts } from "@/data/mockData";
+import { Heart, MessageSquare, Share2, Image as ImageIcon, UserPlus, UserMinus, Ban } from "lucide-react";
+import { mockPosts, mockGames } from "@/data/mockData";
 import { toast } from "sonner";
 
 const Community = () => {
   const [newPost, setNewPost] = useState("");
   const [likedPosts, setLikedPosts] = useState<string[]>([]);
+  const [followedUsers, setFollowedUsers] = useState<string[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
+  const [followedTags, setFollowedTags] = useState<string[]>([]);
+  const [followedDevelopers, setFollowedDevelopers] = useState<string[]>([]);
 
   const handleLike = (postId: string) => {
     if (likedPosts.includes(postId)) {
@@ -25,6 +29,59 @@ const Community = () => {
       setNewPost("");
     }
   };
+
+  const handleFollowUser = (userId: string, userName: string) => {
+    if (followedUsers.includes(userId)) {
+      setFollowedUsers(followedUsers.filter(id => id !== userId));
+      toast.success(`Você deixou de seguir ${userName}`);
+    } else {
+      setFollowedUsers([...followedUsers, userId]);
+      toast.success(`Você está seguindo ${userName}`);
+    }
+  };
+
+  const handleBlockUser = (userId: string, userName: string) => {
+    if (blockedUsers.includes(userId)) {
+      setBlockedUsers(blockedUsers.filter(id => id !== userId));
+      toast.success(`${userName} foi desbloqueado`);
+    } else {
+      setBlockedUsers([...blockedUsers, userId]);
+      toast.success(`${userName} foi bloqueado`);
+    }
+  };
+
+  const handleFollowTag = (tag: string) => {
+    if (followedTags.includes(tag)) {
+      setFollowedTags(followedTags.filter(t => t !== tag));
+      toast.success(`Você deixou de seguir #${tag}`);
+    } else {
+      setFollowedTags([...followedTags, tag]);
+      toast.success(`Você está seguindo #${tag}`);
+    }
+  };
+
+  const handleFollowDeveloper = (devId: string, devName: string) => {
+    if (followedDevelopers.includes(devId)) {
+      setFollowedDevelopers(followedDevelopers.filter(id => id !== devId));
+      toast.success(`Você deixou de seguir ${devName}`);
+    } else {
+      setFollowedDevelopers([...followedDevelopers, devId]);
+      toast.success(`Você está seguindo ${devName}`);
+    }
+  };
+
+  // Get popular tags from games
+  const allTags = mockGames.flatMap(game => game.tags);
+  const popularTags = [...new Set(allTags)].slice(0, 10);
+
+  // Get developers from games
+  const developers = [...new Set(mockGames.map(game => ({ 
+    id: game.developerId, 
+    name: game.developerName 
+  })))].slice(0, 5);
+
+  // Filter blocked users' posts
+  const visiblePosts = mockPosts.filter(post => !blockedUsers.includes(post.userId));
 
   return (
     <div className="min-h-screen pt-16">
@@ -43,8 +100,71 @@ const Community = () => {
       </section>
 
       <div className="container mx-auto px-4 py-12">
-        <div className="max-w-3xl mx-auto">
-          {/* Create Post */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Tags Populares */}
+            <Card className="p-6 bg-card/50 backdrop-blur-sm">
+              <h3 className="font-bold text-lg mb-4">Tags Populares</h3>
+              <div className="flex flex-wrap gap-2">
+                {popularTags.map((tag) => {
+                  const isFollowed = followedTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => handleFollowTag(tag)}
+                      className={`px-3 py-1 rounded-full text-sm transition-smooth ${
+                        isFollowed
+                          ? 'bg-gradient-primary text-white'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      #{tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Desenvolvedoras */}
+            <Card className="p-6 bg-card/50 backdrop-blur-sm">
+              <h3 className="font-bold text-lg mb-4">Desenvolvedoras</h3>
+              <div className="space-y-3">
+                {developers.map((dev) => {
+                  const isFollowed = followedDevelopers.includes(dev.id);
+                  return (
+                    <div key={dev.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-gradient-secondary" />
+                        <span className="text-sm font-medium">{dev.name}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={isFollowed ? "outline" : "hero"}
+                        onClick={() => handleFollowDeveloper(dev.id, dev.name)}
+                      >
+                        {isFollowed ? (
+                          <>
+                            <UserMinus className="w-3 h-3 mr-1" />
+                            Seguindo
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="w-3 h-3 mr-1" />
+                            Seguir
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            {/* Create Post */}
           <Card className="p-6 bg-card/50 backdrop-blur-sm mb-8">
             <h2 className="font-bold text-lg mb-4">Criar novo post</h2>
             <Textarea
@@ -76,9 +196,9 @@ const Community = () => {
             </div>
           </Card>
 
-          {/* Posts Feed */}
-          <div className="space-y-6">
-            {mockPosts.map((post) => {
+            {/* Posts Feed */}
+            <div className="space-y-6">
+              {visiblePosts.map((post) => {
               const isLiked = likedPosts.includes(post.id);
               
               return (
@@ -98,7 +218,27 @@ const Community = () => {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="outline">{post.gameName}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{post.gameName}</Badge>
+                        <Button
+                          size="sm"
+                          variant={followedUsers.includes(post.userId) ? "outline" : "secondary"}
+                          onClick={() => handleFollowUser(post.userId, post.userName)}
+                        >
+                          {followedUsers.includes(post.userId) ? (
+                            <UserMinus className="w-4 h-4" />
+                          ) : (
+                            <UserPlus className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleBlockUser(post.userId, post.userName)}
+                        >
+                          <Ban className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
 
                     <p className="text-foreground mb-4">{post.content}</p>
@@ -146,13 +286,14 @@ const Community = () => {
                 </Card>
               );
             })}
-          </div>
+            </div>
 
-          {/* Load More */}
-          <div className="text-center mt-8">
-            <Button variant="outline" size="lg">
-              Carregar mais posts
-            </Button>
+            {/* Load More */}
+            <div className="text-center mt-8">
+              <Button variant="outline" size="lg">
+                Carregar mais posts
+              </Button>
+            </div>
           </div>
         </div>
       </div>
