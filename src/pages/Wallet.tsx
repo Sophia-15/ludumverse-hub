@@ -5,13 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
   Wallet as WalletIcon, Plus, TrendingUp, TrendingDown, 
-  Clock, CheckCircle, AlertCircle, DollarSign 
+  Clock, CheckCircle, AlertCircle, DollarSign, ArrowDownToLine 
 } from "lucide-react";
 import { mockWallet } from "@/data/mockData";
 import { toast } from "sonner";
 
 const Wallet = () => {
   const [depositAmount, setDepositAmount] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
 
   const handleDeposit = () => {
     const amount = parseFloat(depositAmount);
@@ -21,10 +22,34 @@ const Wallet = () => {
     }
   };
 
+  const handleWithdraw = () => {
+    const amount = parseFloat(withdrawAmount);
+    
+    if (!amount || amount <= 0) {
+      toast.error("Por favor, insira um valor válido para saque.");
+      return;
+    }
+
+    if (amount < 10) {
+      toast.error("O valor mínimo para saque é R$ 10,00");
+      return;
+    }
+
+    if (amount > mockWallet.availableBalance) {
+      toast.error("Saldo insuficiente para realizar o saque.");
+      return;
+    }
+
+    toast.success(`Saque de R$ ${amount.toFixed(2)} solicitado com sucesso! O valor será transferido em até 2 dias úteis.`);
+    setWithdrawAmount("");
+  };
+
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'deposit':
         return <TrendingUp className="w-5 h-5 text-secondary" />;
+      case 'withdraw':
+        return <ArrowDownToLine className="w-5 h-5 text-primary" />;
       case 'purchase':
       case 'crowdfunding':
         return <TrendingDown className="w-5 h-5 text-destructive" />;
@@ -119,39 +144,75 @@ const Wallet = () => {
             </Card>
           </div>
 
-          {/* Add Funds */}
-          <Card className="p-6 bg-card/50 backdrop-blur-sm mb-8">
-            <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-secondary" />
-              Adicionar Saldo
-            </h2>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Input
-                  type="number"
-                  placeholder="Valor (R$)"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  min="0"
-                  step="0.01"
-                />
+          {/* Actions Grid */}
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
+            {/* Add Funds */}
+            <Card className="p-6 bg-card/50 backdrop-blur-sm">
+              <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-secondary" />
+                Adicionar Saldo
+              </h2>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Input
+                    type="number"
+                    placeholder="Valor (R$)"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <Button
+                  variant="accent"
+                  onClick={handleDeposit}
+                  disabled={!depositAmount || parseFloat(depositAmount) <= 0}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar
+                </Button>
               </div>
-              <Button
-                variant="accent"
-                onClick={handleDeposit}
-                disabled={!depositAmount || parseFloat(depositAmount) <= 0}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar
-              </Button>
-            </div>
-            <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                ⏰ <strong>Importante:</strong> Valores acima de R$ 100,00 terão trava de segurança de 24h após confirmação.
-                Você pode solicitar reembolso em até 24h após adicionar saldo.
-              </p>
-            </div>
-          </Card>
+              <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  ⏰ Valores acima de R$ 100 terão trava de 24h após confirmação.
+                </p>
+              </div>
+            </Card>
+
+            {/* Withdraw Funds */}
+            <Card className="p-6 bg-card/50 backdrop-blur-sm">
+              <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <ArrowDownToLine className="w-5 h-5 text-primary" />
+                Sacar Saldo
+              </h2>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Input
+                    type="number"
+                    placeholder="Valor (R$)"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    min="10"
+                    max={mockWallet.availableBalance}
+                    step="0.01"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleWithdraw}
+                  disabled={!withdrawAmount || parseFloat(withdrawAmount) < 10 || parseFloat(withdrawAmount) > mockWallet.availableBalance}
+                >
+                  <ArrowDownToLine className="w-4 h-4 mr-2" />
+                  Sacar
+                </Button>
+              </div>
+              <div className="mt-4 p-3 bg-secondary/10 border border-secondary/20 rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  💰 Valor mínimo: R$ 10,00 | Disponível: R$ {mockWallet.availableBalance.toFixed(2)}
+                </p>
+              </div>
+            </Card>
+          </div>
 
           {/* Transaction History */}
           <Card className="p-6 bg-card/50 backdrop-blur-sm">
@@ -214,6 +275,7 @@ const Wallet = () => {
               <li>• Reembolsos de compras retornam para a carteira em até 24h</li>
               <li>• Valores bloqueados liberam após confirmação de pagamento</li>
               <li>• Trava antifraude de 24h se aplica a depósitos acima de R$ 100</li>
+              <li>• Saques têm valor mínimo de R$ 10,00 e são processados em até 2 dias úteis</li>
               <li>• Histórico completo com idempotência e trilha de auditoria</li>
               <li>• Desenvolvedores podem sacar vendas 24h após a compra</li>
             </ul>
