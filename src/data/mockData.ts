@@ -28,7 +28,9 @@ export interface Review {
   comment: string;
   recommended: boolean;
   date: string;
+  updatedAt?: string;
   helpful: number;
+  deleted?: boolean;
 }
 
 export interface CrowdfundingCampaign {

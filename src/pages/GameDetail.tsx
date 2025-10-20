@@ -4,22 +4,46 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   ShoppingCart, Download, Star, ThumbsUp, ThumbsDown, 
-  Calendar, Users, Wrench, ArrowLeft 
+  Calendar, Users, Wrench, ArrowLeft, Edit, Trash2, Plus
 } from "lucide-react";
-import { mockGames, mockReviews, mockUserLibrary } from "@/data/mockData";
-import { useState } from "react";
+import { mockGames, mockReviews, mockUserLibrary, mockCurrentUser, Review } from "@/data/mockData";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { ReviewForm } from "@/components/ReviewForm";
 
 const GameDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const game = mockGames.find(g => g.slug === slug);
-  const gameReviews = mockReviews.filter(r => r.gameId === game?.id);
   const isOwned = game && mockUserLibrary.includes(game.id);
   
   const [selectedImage, setSelectedImage] = useState(0);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("recent");
+
+  // Load reviews from localStorage on mount
+  useEffect(() => {
+    const storedReviews = localStorage.getItem('gameReviews');
+    if (storedReviews) {
+      setReviews(JSON.parse(storedReviews));
+    } else {
+      setReviews(mockReviews);
+      localStorage.setItem('gameReviews', JSON.stringify(mockReviews));
+    }
+  }, []);
+
+  // Save reviews to localStorage whenever they change
+  useEffect(() => {
+    if (reviews.length > 0) {
+      localStorage.setItem('gameReviews', JSON.stringify(reviews));
+    }
+  }, [reviews]);
 
   if (!game) {
     return (
@@ -29,16 +53,107 @@ const GameDetail = () => {
     );
   }
 
+  // Filter reviews: exclude deleted ones and filter by game
+  const gameReviews = reviews.filter(r => r.gameId === game.id && !r.deleted);
+  
+  // Check if current user already has a review for this game
+  const userReview = gameReviews.find(r => r.userId === mockCurrentUser.id);
+
+  // Calculate review statistics
+  const totalReviews = gameReviews.length;
+  const averageRating = totalReviews > 0
+    ? gameReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
+    : 0;
+  const recommendedCount = gameReviews.filter(r => r.recommended).length;
+  const recommendationPercentage = totalReviews > 0
+    ? (recommendedCount / totalReviews) * 100
+    : 0;
+
+  // Filter and sort reviews
+  let filteredReviews = [...gameReviews];
+  
+  if (ratingFilter !== "all") {
+    const filterRating = parseInt(ratingFilter);
+    filteredReviews = filteredReviews.filter(r => r.rating === filterRating);
+  }
+
+  if (sortBy === "recent") {
+    filteredReviews.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  } else if (sortBy === "oldest") {
+    filteredReviews.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  } else if (sortBy === "helpful") {
+    filteredReviews.sort((a, b) => b.helpful - a.helpful);
+  }
+
   const handlePurchase = () => {
-    if (game.price === 0) {
-      toast.success(`${game.title} adicionado à sua biblioteca!`);
-    } else {
-      toast.success(`Compra de ${game.title} realizada com sucesso!`);
+    if (!isOwned) {
+      if (game.price === 0) {
+        toast.success(`${game.title} adicionado à sua biblioteca!`);
+      } else {
+        toast.success(`Compra de ${game.title} realizada com sucesso!`);
+      }
+      mockUserLibrary.push(game.id);
     }
   };
 
   const handleDownload = () => {
     toast.success(`Download de ${game.title} iniciado!`);
+  };
+
+  const handleSubmitReview = (reviewData: { rating: number; comment: string; recommended: boolean }) => {
+    if (!isOwned) {
+      toast.error("Você precisa ter o jogo na sua biblioteca para avaliar!");
+      return;
+    }
+
+    if (editingReview) {
+      // Update existing review
+      const updatedReviews = reviews.map(r =>
+        r.id === editingReview.id
+          ? {
+              ...r,
+              ...reviewData,
+              updatedAt: new Date().toISOString().split('T')[0],
+            }
+          : r
+      );
+      setReviews(updatedReviews);
+      toast.success("Review atualizada com sucesso!");
+      setEditingReview(null);
+    } else {
+      // Create new review
+      const newReview: Review = {
+        id: `r${Date.now()}`,
+        gameId: game.id,
+        userId: mockCurrentUser.id,
+        userName: mockCurrentUser.name,
+        ...reviewData,
+        date: new Date().toISOString().split('T')[0],
+        helpful: 0,
+      };
+      setReviews([...reviews, newReview]);
+      toast.success("Review publicada com sucesso!");
+    }
+    
+    setShowReviewForm(false);
+  };
+
+  const handleEditReview = () => {
+    if (userReview) {
+      setEditingReview(userReview);
+      setShowReviewForm(true);
+    }
+  };
+
+  const handleDeleteReview = () => {
+    if (userReview) {
+      // Soft delete - just mark as deleted
+      const updatedReviews = reviews.map(r =>
+        r.id === userReview.id ? { ...r, deleted: true } : r
+      );
+      setReviews(updatedReviews);
+      toast.success("Review removida com sucesso!");
+    }
   };
 
   const allImages = [game.coverImage, ...game.screenshots];
@@ -136,9 +251,9 @@ const GameDetail = () => {
               <div className="mt-6 pt-6 border-t border-border/50 space-y-3">
                 <div className="flex items-center gap-2">
                   <Star className="w-5 h-5 fill-primary text-primary" />
-                  <span className="font-semibold">{game.rating}</span>
+                  <span className="font-semibold">{averageRating.toFixed(1)}</span>
                   <span className="text-muted-foreground text-sm">
-                    ({game.reviewCount} reviews)
+                    ({totalReviews} reviews)
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -172,7 +287,7 @@ const GameDetail = () => {
         <Tabs defaultValue="about" className="w-full">
           <TabsList className="grid w-full grid-cols-3 max-w-md">
             <TabsTrigger value="about">Sobre</TabsTrigger>
-            <TabsTrigger value="reviews">Reviews ({gameReviews.length})</TabsTrigger>
+            <TabsTrigger value="reviews">Reviews ({totalReviews})</TabsTrigger>
             <TabsTrigger value="community">Comunidade</TabsTrigger>
           </TabsList>
 
@@ -209,18 +324,38 @@ const GameDetail = () => {
               <Card className="p-6 bg-card/50 backdrop-blur-sm">
                 <div className="flex items-start gap-6">
                   <div className="text-center">
-                    <div className="text-5xl font-bold text-primary mb-2">{game.rating}</div>
+                    <div className="text-5xl font-bold text-primary mb-2">
+                      {averageRating.toFixed(1)}
+                    </div>
                     <div className="flex gap-1 mb-2">
                       {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-primary text-primary" />
+                        <Star 
+                          key={i} 
+                          className={`w-4 h-4 ${
+                            i < Math.round(averageRating) 
+                              ? "fill-primary text-primary" 
+                              : "text-muted"
+                          }`}
+                        />
                       ))}
                     </div>
-                    <p className="text-sm text-muted-foreground">{game.reviewCount} avaliações</p>
+                    <p className="text-sm text-muted-foreground">{totalReviews} avaliações</p>
                   </div>
                   <div className="flex-1">
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ThumbsUp className="w-5 h-5 text-primary" />
+                        <span className="text-lg font-semibold">
+                          {recommendationPercentage.toFixed(0)}% recomendam
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {recommendedCount} de {totalReviews} jogadores recomendam este jogo
+                      </p>
+                    </div>
                     {[5, 4, 3, 2, 1].map((rating) => {
-                      const count = Math.floor(Math.random() * game.reviewCount * 0.3);
-                      const percentage = (count / game.reviewCount) * 100;
+                      const count = gameReviews.filter(r => r.rating === rating).length;
+                      const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
                       return (
                         <div key={rating} className="flex items-center gap-2 mb-2">
                           <span className="text-sm w-12">{rating} ★</span>
@@ -233,52 +368,173 @@ const GameDetail = () => {
                 </div>
               </Card>
 
-              {/* Reviews List */}
-              {gameReviews.map((review) => (
-                <Card key={review.id} className="p-6 bg-card/50 backdrop-blur-sm">
-                  <div className="flex items-start justify-between mb-3">
+              {/* User's Review Management */}
+              {isOwned && (
+                <Card className="p-6 bg-card/50 backdrop-blur-sm">
+                  {userReview && !showReviewForm ? (
                     <div>
-                      <p className="font-semibold">{review.userName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(review.date).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                    <Badge variant={review.recommended ? "default" : "destructive"}>
-                      {review.recommended ? (
-                        <>
-                          <ThumbsUp className="w-3 h-3 mr-1" />
-                          Recomendo
-                        </>
-                      ) : (
-                        <>
-                          <ThumbsDown className="w-3 h-3 mr-1" />
-                          Não recomendo
-                        </>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">Sua Review</h3>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={handleEditReview}>
+                            <Edit className="w-4 h-4 mr-1" />
+                            Editar
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={handleDeleteReview}>
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Remover
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 mb-2">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-5 h-5 ${
+                              i < userReview.rating ? 'fill-primary text-primary' : 'text-muted'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <Badge variant={userReview.recommended ? "default" : "destructive"} className="mb-3">
+                        {userReview.recommended ? (
+                          <>
+                            <ThumbsUp className="w-3 h-3 mr-1" />
+                            Recomendo
+                          </>
+                        ) : (
+                          <>
+                            <ThumbsDown className="w-3 h-3 mr-1" />
+                            Não recomendo
+                          </>
+                        )}
+                      </Badge>
+                      <p className="text-muted-foreground">{userReview.comment}</p>
+                      {userReview.updatedAt && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Editado em: {new Date(userReview.updatedAt).toLocaleDateString('pt-BR')}
+                        </p>
                       )}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex gap-1 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-4 h-4 ${
-                          i < review.rating ? 'fill-primary text-primary' : 'text-muted'
-                        }`}
+                    </div>
+                  ) : showReviewForm ? (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">
+                        {editingReview ? "Editar Review" : "Escrever Review"}
+                      </h3>
+                      <ReviewForm
+                        gameId={game.id}
+                        existingReview={editingReview ? {
+                          id: editingReview.id,
+                          rating: editingReview.rating,
+                          comment: editingReview.comment,
+                          recommended: editingReview.recommended,
+                        } : undefined}
+                        onSubmit={handleSubmitReview}
+                        onCancel={() => {
+                          setShowReviewForm(false);
+                          setEditingReview(null);
+                        }}
                       />
-                    ))}
-                  </div>
-
-                  <p className="text-muted-foreground mb-3">{review.comment}</p>
-
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <button className="flex items-center gap-1 hover:text-foreground transition-smooth">
-                      <ThumbsUp className="w-4 h-4" />
-                      <span>Útil ({review.helpful})</span>
-                    </button>
-                  </div>
+                    </div>
+                  ) : (
+                    <Button onClick={() => setShowReviewForm(true)} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Escrever Review
+                    </Button>
+                  )}
                 </Card>
-              ))}
+              )}
+
+              {/* Filters */}
+              <Card className="p-4 bg-card/50 backdrop-blur-sm">
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="text-sm font-medium mb-2 block">Filtrar por nota</label>
+                    <Select value={ratingFilter} onValueChange={setRatingFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Todas as notas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as notas</SelectItem>
+                        <SelectItem value="5">5 estrelas</SelectItem>
+                        <SelectItem value="4">4 estrelas</SelectItem>
+                        <SelectItem value="3">3 estrelas</SelectItem>
+                        <SelectItem value="2">2 estrelas</SelectItem>
+                        <SelectItem value="1">1 estrela</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="text-sm font-medium mb-2 block">Ordenar por</label>
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Mais recentes" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="recent">Mais recentes</SelectItem>
+                        <SelectItem value="oldest">Mais antigas</SelectItem>
+                        <SelectItem value="helpful">Mais úteis</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Reviews List */}
+              {filteredReviews.length > 0 ? (
+                filteredReviews.map((review) => (
+                  <Card key={review.id} className="p-6 bg-card/50 backdrop-blur-sm">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="font-semibold">{review.userName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(review.date).toLocaleDateString('pt-BR')}
+                          {review.updatedAt && " (editado)"}
+                        </p>
+                      </div>
+                      <Badge variant={review.recommended ? "default" : "destructive"}>
+                        {review.recommended ? (
+                          <>
+                            <ThumbsUp className="w-3 h-3 mr-1" />
+                            Recomendo
+                          </>
+                        ) : (
+                          <>
+                            <ThumbsDown className="w-3 h-3 mr-1" />
+                            Não recomendo
+                          </>
+                        )}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex gap-1 mb-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${
+                            i < review.rating ? 'fill-primary text-primary' : 'text-muted'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    <p className="text-muted-foreground mb-3">{review.comment}</p>
+
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <button className="flex items-center gap-1 hover:text-foreground transition-smooth">
+                        <ThumbsUp className="w-4 h-4" />
+                        <span>Útil ({review.helpful})</span>
+                      </button>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <Card className="p-6 bg-card/50 backdrop-blur-sm text-center">
+                  <p className="text-muted-foreground">
+                    Nenhuma review encontrada com os filtros selecionados.
+                  </p>
+                </Card>
+              )}
             </div>
           </TabsContent>
 
