@@ -1,22 +1,13 @@
-import { Button } from "@/components/ui/button";
-import { Gamepad2, Menu, X } from "lucide-react";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { Button } from '@/components/ui/button';
+import { Gamepad2, Menu, X } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuthContext();
-
-  // Links públicos (apenas para visitantes)
-  const publicLinks = [
-    { label: "Catálogo", href: "/catalogo" },
-    { label: "Crowdfunding", href: "/crowdfunding" },
-  ];
-
-  // Links ficam visíveis, mas somente alguns para visitantes
-  const navLinks = publicLinks;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
@@ -30,33 +21,20 @@ export const Navigation = () => {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((link, index) => (
-              <Link
-                key={index}
-                to={link.href}
-                className="text-muted-foreground hover:text-foreground transition-smooth"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-3">
             {isAuthenticated ? (
               <>
-                <Button variant="secondary" onClick={() => navigate("/painel")}>
+                <Button variant="secondary" onClick={() => navigate('/painel')}>
                   Meu Painel
                 </Button>
               </>
             ) : (
               <>
-                <Button variant="ghost" onClick={() => navigate("/auth")}>
+                <Button variant="ghost" onClick={() => navigate('/auth')}>
                   Entrar
                 </Button>
-                <Button variant="hero" onClick={() => navigate("/auth")}>
+                <Button variant="hero" onClick={() => navigate('/auth')}>
                   Cadastrar
                 </Button>
               </>
@@ -80,27 +58,38 @@ export const Navigation = () => {
         {/* Mobile Menu */}
         {isOpen && (
           <div className="md:hidden py-4 space-y-4 border-t border-border/50">
-            {navLinks.map((link, index) => (
-              <Link
-                key={index}
-                to={link.href}
-                className="block text-muted-foreground hover:text-foreground transition-smooth py-2"
-                onClick={() => setIsOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
             <div className="flex flex-col gap-2 pt-4">
               {isAuthenticated ? (
-                <Button variant="secondary" onClick={() => { navigate("/painel"); setIsOpen(false); }} className="w-full">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    navigate('/painel');
+                    setIsOpen(false);
+                  }}
+                  className="w-full"
+                >
                   Meu Painel
                 </Button>
               ) : (
                 <>
-                  <Button variant="ghost" onClick={() => { navigate("/auth"); setIsOpen(false); }} className="w-full">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      navigate('/auth');
+                      setIsOpen(false);
+                    }}
+                    className="w-full"
+                  >
                     Entrar
                   </Button>
-                  <Button variant="hero" onClick={() => { navigate("/auth"); setIsOpen(false); }} className="w-full">
+                  <Button
+                    variant="hero"
+                    onClick={() => {
+                      navigate('/auth');
+                      setIsOpen(false);
+                    }}
+                    className="w-full"
+                  >
                     Cadastrar
                   </Button>
                 </>
