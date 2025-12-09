@@ -5,8 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { 
-  CreditCard, QrCode, ArrowLeft, Lock, CheckCircle, Copy 
+import {
+  CreditCard,
+  QrCode,
+  ArrowLeft,
+  Lock,
+  CheckCircle,
+  Copy,
 } from 'lucide-react';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { toast } from 'sonner';
@@ -43,19 +48,112 @@ const Payment = () => {
   };
 
   const formatCardNumber = (value: string) => {
-    return value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim().substring(0, 19);
+    return value
+      .replace(/\s/g, '')
+      .replace(/(\d{4})/g, '$1 ')
+      .trim()
+      .substring(0, 19);
+  };
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length === 0) return '';
+    if (numbers.length <= 2) return `(${numbers}`;
+    if (numbers.length <= 6)
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    if (numbers.length <= 10) {
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(
+        6,
+      )}`;
+    }
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(
+      7,
+      11,
+    )}`;
+  };
+
+  const formatCPF = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length === 0) return '';
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6)
+      return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
+    if (numbers.length <= 9)
+      return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(
+        6,
+      )}`;
+    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(
+      6,
+      9,
+    )}-${numbers.slice(9, 11)}`;
+  };
+
+  const formatCEP = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length === 0) return '';
+    if (numbers.length <= 5) return numbers;
+    return `${numbers.slice(0, 5)}-${numbers.slice(5, 8)}`;
   };
 
   const handleCardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
 
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      // TODO: Pegar o contaId real do contexto de autenticação
+      const contaId = '123e4567-e89b-12d3-a456-426614174000';
 
-    setIsProcessing(false);
-    setPaymentCompleted(true);
-    toast.success('Pagamento aprovado!');
+      const payload = {
+        valor: amount,
+        numeroCartao: cardData.number.replace(/\s/g, ''),
+        nomeCartao: cardData.holderName,
+        mesValidade: cardData.expiryMonth,
+        anoValidade: cardData.expiryYear,
+        cvv: cardData.ccv,
+        cpfCnpj: cardData.cpfCnpj.replace(/\D/g, ''), // only digits for CPF/CNPJ
+        cep: cardData.postalCode, // keep format XXXXX-XXX
+        numeroEndereco: cardData.addressNumber,
+        telefone: cardData.phone, // keep format (XX) XXXXX-XXXX
+      };
+
+      console.log(
+        'Enviando para:',
+        `${apiUrl}/api/carteira/${contaId}/adicionar-saldo`,
+      );
+      console.log('Payload:', payload);
+
+      const response = await fetch(
+        `${apiUrl}/api/carteira/${contaId}/adicionar-saldo`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      const data = await response.json();
+      console.log('Resposta:', data);
+
+      if (response.ok && data.sucesso) {
+        setIsProcessing(false);
+        setPaymentCompleted(true);
+        toast.success(
+          `Pagamento aprovado! ID: ${data.transacaoId || data.idGateway}`,
+        );
+      } else {
+        setIsProcessing(false);
+        toast.error(`Erro: ${data.mensagemErro || 'Falha no pagamento'}`);
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      setIsProcessing(false);
+      toast.error(
+        'Erro ao conectar com o servidor. Verifique se o backend está rodando.',
+      );
+    }
   };
 
   const handlePixConfirm = async () => {
@@ -74,7 +172,9 @@ const Payment = () => {
       <DashboardLayout>
         <div className="p-6 md:p-8 flex items-center justify-center min-h-[60vh]">
           <Card className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">Valor inválido para pagamento</p>
+            <p className="text-muted-foreground mb-4">
+              Valor inválido para pagamento
+            </p>
             <Button onClick={() => navigate('/painel/carteira')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar para Carteira
@@ -96,7 +196,8 @@ const Payment = () => {
             <h2 className="text-2xl font-bold mb-2">Pagamento Confirmado!</h2>
             <p className="text-muted-foreground mb-6">
               R$ {amount.toFixed(2)} foi adicionado à sua carteira.
-              {amount > 100 && ' O valor ficará bloqueado por 24h (trava antifraude).'}
+              {amount > 100 &&
+                ' O valor ficará bloqueado por 24h (trava antifraude).'}
             </p>
             <Button onClick={() => navigate('/painel/carteira')}>
               Voltar para Carteira
@@ -112,15 +213,24 @@ const Payment = () => {
       <div className="p-6 md:p-8">
         {/* Header */}
         <div className="mb-8">
-          <Button variant="ghost" onClick={() => navigate('/painel/carteira')} className="mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/painel/carteira')}
+            className="mb-4"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
           <h1 className="text-3xl font-bold mb-2">
-            <span className="bg-gradient-primary bg-clip-text text-transparent">Adicionar Saldo</span>
+            <span className="bg-gradient-primary bg-clip-text text-transparent">
+              Adicionar Saldo
+            </span>
           </h1>
           <p className="text-muted-foreground">
-            Valor: <span className="text-foreground font-bold">R$ {amount.toFixed(2)}</span>
+            Valor:{' '}
+            <span className="text-foreground font-bold">
+              R$ {amount.toFixed(2)}
+            </span>
           </p>
         </div>
 
@@ -145,7 +255,9 @@ const Payment = () => {
                 <QrCode className="w-6 h-6 text-secondary" />
                 <div>
                   <p className="font-medium">PIX</p>
-                  <p className="text-xs text-muted-foreground">Aprovação instantânea</p>
+                  <p className="text-xs text-muted-foreground">
+                    Aprovação instantânea
+                  </p>
                 </div>
               </Label>
 
@@ -161,7 +273,9 @@ const Payment = () => {
                 <CreditCard className="w-6 h-6 text-primary" />
                 <div>
                   <p className="font-medium">Cartão</p>
-                  <p className="text-xs text-muted-foreground">Crédito ou Débito</p>
+                  <p className="text-xs text-muted-foreground">
+                    Crédito ou Débito
+                  </p>
                 </div>
               </Label>
             </RadioGroup>
@@ -229,7 +343,10 @@ const Payment = () => {
                     placeholder="0000 0000 0000 0000"
                     value={formatCardNumber(cardData.number)}
                     onChange={(e) =>
-                      setCardData({ ...cardData, number: e.target.value.replace(/\s/g, '') })
+                      setCardData({
+                        ...cardData,
+                        number: e.target.value.replace(/\s/g, ''),
+                      })
                     }
                     maxLength={19}
                     required
@@ -244,7 +361,10 @@ const Payment = () => {
                     placeholder="Como está no cartão"
                     value={cardData.holderName}
                     onChange={(e) =>
-                      setCardData({ ...cardData, holderName: e.target.value.toUpperCase() })
+                      setCardData({
+                        ...cardData,
+                        holderName: e.target.value.toUpperCase(),
+                      })
                     }
                     required
                   />
@@ -260,7 +380,10 @@ const Payment = () => {
                       maxLength={2}
                       value={cardData.expiryMonth}
                       onChange={(e) =>
-                        setCardData({ ...cardData, expiryMonth: e.target.value })
+                        setCardData({
+                          ...cardData,
+                          expiryMonth: e.target.value,
+                        })
                       }
                       required
                     />
@@ -285,7 +408,9 @@ const Payment = () => {
                       placeholder="000"
                       maxLength={4}
                       value={cardData.ccv}
-                      onChange={(e) => setCardData({ ...cardData, ccv: e.target.value })}
+                      onChange={(e) =>
+                        setCardData({ ...cardData, ccv: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -298,7 +423,13 @@ const Payment = () => {
                     id="cpfCnpj"
                     placeholder="000.000.000-00"
                     value={cardData.cpfCnpj}
-                    onChange={(e) => setCardData({ ...cardData, cpfCnpj: e.target.value })}
+                    onChange={(e) =>
+                      setCardData({
+                        ...cardData,
+                        cpfCnpj: formatCPF(e.target.value),
+                      })
+                    }
+                    maxLength={14}
                     required
                   />
                 </div>
@@ -312,8 +443,12 @@ const Payment = () => {
                       placeholder="00000-000"
                       value={cardData.postalCode}
                       onChange={(e) =>
-                        setCardData({ ...cardData, postalCode: e.target.value })
+                        setCardData({
+                          ...cardData,
+                          postalCode: formatCEP(e.target.value),
+                        })
                       }
+                      maxLength={9}
                       required
                     />
                   </div>
@@ -324,7 +459,10 @@ const Payment = () => {
                       placeholder="123"
                       value={cardData.addressNumber}
                       onChange={(e) =>
-                        setCardData({ ...cardData, addressNumber: e.target.value })
+                        setCardData({
+                          ...cardData,
+                          addressNumber: e.target.value,
+                        })
                       }
                       required
                     />
@@ -338,18 +476,33 @@ const Payment = () => {
                     id="phone"
                     placeholder="(00) 00000-0000"
                     value={cardData.phone}
-                    onChange={(e) => setCardData({ ...cardData, phone: e.target.value })}
+                    onChange={(e) =>
+                      setCardData({
+                        ...cardData,
+                        phone: formatPhone(e.target.value),
+                      })
+                    }
+                    maxLength={15}
                     required
                   />
                 </div>
 
                 <div className="flex items-center gap-2 text-xs text-muted-foreground p-3 bg-muted/30 rounded-lg">
                   <Lock className="w-4 h-4" />
-                  <span>Seus dados estão protegidos com criptografia de ponta a ponta</span>
+                  <span>
+                    Seus dados estão protegidos com criptografia de ponta a
+                    ponta
+                  </span>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={isProcessing}>
-                  {isProcessing ? 'Processando...' : `Pagar R$ ${amount.toFixed(2)}`}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isProcessing}
+                >
+                  {isProcessing
+                    ? 'Processando...'
+                    : `Pagar R$ ${amount.toFixed(2)}`}
                 </Button>
               </form>
             </Card>

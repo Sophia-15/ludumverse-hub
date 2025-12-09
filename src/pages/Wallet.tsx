@@ -1,47 +1,63 @@
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Wallet as WalletIcon, Plus, TrendingUp, TrendingDown, 
-  Clock, CheckCircle, AlertCircle, DollarSign, ArrowDownToLine 
-} from "lucide-react";
-import { mockWallet } from "@/data/mockData";
-import { toast } from "sonner";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Wallet as WalletIcon,
+  Plus,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  DollarSign,
+  ArrowDownToLine,
+} from 'lucide-react';
+import { mockWallet } from '@/data/mockData';
+import { toast } from 'sonner';
 
 const Wallet = () => {
-  const [depositAmount, setDepositAmount] = useState("");
-  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const navigate = useNavigate();
+  const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
 
   const handleDeposit = () => {
     const amount = parseFloat(depositAmount);
     if (amount && amount > 0) {
-      toast.success(`R$ ${amount.toFixed(2)} será adicionado à sua carteira após confirmação do pagamento.`);
-      setDepositAmount("");
+      if (amount < 5) {
+        toast.error('Valor mínimo é R$ 5,00');
+        return;
+      }
+      navigate(`/payment?amount=${amount}`);
     }
   };
 
   const handleWithdraw = () => {
     const amount = parseFloat(withdrawAmount);
-    
+
     if (!amount || amount <= 0) {
-      toast.error("Por favor, insira um valor válido para saque.");
+      toast.error('Por favor, insira um valor válido para saque.');
       return;
     }
 
     if (amount < 10) {
-      toast.error("O valor mínimo para saque é R$ 10,00");
+      toast.error('O valor mínimo para saque é R$ 10,00');
       return;
     }
 
     if (amount > mockWallet.availableBalance) {
-      toast.error("Saldo insuficiente para realizar o saque.");
+      toast.error('Saldo insuficiente para realizar o saque.');
       return;
     }
 
-    toast.success(`Saque de R$ ${amount.toFixed(2)} solicitado com sucesso! O valor será transferido em até 2 dias úteis.`);
-    setWithdrawAmount("");
+    toast.success(
+      `Saque de R$ ${amount.toFixed(
+        2,
+      )} solicitado com sucesso! O valor será transferido em até 2 dias úteis.`,
+    );
+    setWithdrawAmount('');
   };
 
   const getTransactionIcon = (type: string) => {
@@ -174,7 +190,8 @@ const Wallet = () => {
               </div>
               <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-lg">
                 <p className="text-xs text-muted-foreground">
-                  ⏰ Valores acima de R$ 100 terão trava de 24h após confirmação.
+                  ⏰ Valores acima de R$ 100 terão trava de 24h após
+                  confirmação.
                 </p>
               </div>
             </Card>
@@ -200,7 +217,11 @@ const Wallet = () => {
                 <Button
                   variant="outline"
                   onClick={handleWithdraw}
-                  disabled={!withdrawAmount || parseFloat(withdrawAmount) < 10 || parseFloat(withdrawAmount) > mockWallet.availableBalance}
+                  disabled={
+                    !withdrawAmount ||
+                    parseFloat(withdrawAmount) < 10 ||
+                    parseFloat(withdrawAmount) > mockWallet.availableBalance
+                  }
                 >
                   <ArrowDownToLine className="w-4 h-4 mr-2" />
                   Sacar
@@ -208,7 +229,8 @@ const Wallet = () => {
               </div>
               <div className="mt-4 p-3 bg-secondary/10 border border-secondary/20 rounded-lg">
                 <p className="text-xs text-muted-foreground">
-                  💰 Valor mínimo: R$ 10,00 | Disponível: R$ {mockWallet.availableBalance.toFixed(2)}
+                  💰 Valor mínimo: R$ 10,00 | Disponível: R${' '}
+                  {mockWallet.availableBalance.toFixed(2)}
                 </p>
               </div>
             </Card>
@@ -217,7 +239,7 @@ const Wallet = () => {
           {/* Transaction History */}
           <Card className="p-6 bg-card/50 backdrop-blur-sm">
             <h2 className="font-bold text-lg mb-6">Histórico de Transações</h2>
-            
+
             <div className="space-y-4">
               {mockWallet.transactions.map((transaction) => (
                 <div
@@ -231,7 +253,9 @@ const Wallet = () => {
 
                   {/* Details */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium mb-1">{transaction.description}</p>
+                    <p className="font-medium mb-1">
+                      {transaction.description}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {new Date(transaction.date).toLocaleDateString('pt-BR', {
                         day: '2-digit',
@@ -261,9 +285,7 @@ const Wallet = () => {
 
             {/* Load More */}
             <div className="text-center mt-6">
-              <Button variant="outline">
-                Ver todas as transações
-              </Button>
+              <Button variant="outline">Ver todas as transações</Button>
             </div>
           </Card>
 
@@ -271,12 +293,25 @@ const Wallet = () => {
           <Card className="mt-8 p-6 bg-secondary/10 border-secondary/20">
             <h3 className="font-bold text-lg mb-3">💡 Sobre a Carteira</h3>
             <ul className="space-y-2 text-muted-foreground text-sm">
-              <li>• Saldo disponível pode ser usado para compras e crowdfunding</li>
-              <li>• Reembolsos de compras retornam para a carteira em até 24h</li>
-              <li>• Valores bloqueados liberam após confirmação de pagamento</li>
-              <li>• Trava antifraude de 24h se aplica a depósitos acima de R$ 100</li>
-              <li>• Saques têm valor mínimo de R$ 10,00 e são processados em até 2 dias úteis</li>
-              <li>• Histórico completo com idempotência e trilha de auditoria</li>
+              <li>
+                • Saldo disponível pode ser usado para compras e crowdfunding
+              </li>
+              <li>
+                • Reembolsos de compras retornam para a carteira em até 24h
+              </li>
+              <li>
+                • Valores bloqueados liberam após confirmação de pagamento
+              </li>
+              <li>
+                • Trava antifraude de 24h se aplica a depósitos acima de R$ 100
+              </li>
+              <li>
+                • Saques têm valor mínimo de R$ 10,00 e são processados em até 2
+                dias úteis
+              </li>
+              <li>
+                • Histórico completo com idempotência e trilha de auditoria
+              </li>
               <li>• Desenvolvedores podem sacar vendas 24h após a compra</li>
             </ul>
           </Card>
