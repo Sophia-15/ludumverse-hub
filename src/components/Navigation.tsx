@@ -2,19 +2,21 @@ import { Button } from "@/components/ui/button";
 import { Gamepad2, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuthContext();
 
-  const navLinks = [
+  // Links públicos (apenas para visitantes)
+  const publicLinks = [
     { label: "Catálogo", href: "/catalogo" },
-    { label: "Biblioteca", href: "/biblioteca" },
     { label: "Crowdfunding", href: "/crowdfunding" },
-    { label: "Mods", href: "/mods" },
-    { label: "Comunidade", href: "/comunidade" },
-    { label: "Carteira", href: "/carteira" },
   ];
+
+  // Links ficam visíveis, mas somente alguns para visitantes
+  const navLinks = publicLinks;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
@@ -43,11 +45,22 @@ export const Navigation = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="secondary" onClick={() => navigate("/desenvolvedor")}>
-              Área Dev
-            </Button>
-            <Button variant="ghost">Entrar</Button>
-            <Button variant="hero">Cadastrar</Button>
+            {isAuthenticated ? (
+              <>
+                <Button variant="secondary" onClick={() => navigate("/painel")}>
+                  Meu Painel
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={() => navigate("/auth")}>
+                  Entrar
+                </Button>
+                <Button variant="hero" onClick={() => navigate("/auth")}>
+                  Cadastrar
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -78,11 +91,20 @@ export const Navigation = () => {
               </Link>
             ))}
             <div className="flex flex-col gap-2 pt-4">
-              <Button variant="secondary" onClick={() => navigate("/desenvolvedor")} className="w-full">
-                Área Dev
-              </Button>
-              <Button variant="ghost" className="w-full">Entrar</Button>
-              <Button variant="hero" className="w-full">Cadastrar</Button>
+              {isAuthenticated ? (
+                <Button variant="secondary" onClick={() => { navigate("/painel"); setIsOpen(false); }} className="w-full">
+                  Meu Painel
+                </Button>
+              ) : (
+                <>
+                  <Button variant="ghost" onClick={() => { navigate("/auth"); setIsOpen(false); }} className="w-full">
+                    Entrar
+                  </Button>
+                  <Button variant="hero" onClick={() => { navigate("/auth"); setIsOpen(false); }} className="w-full">
+                    Cadastrar
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}
